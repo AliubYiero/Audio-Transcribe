@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta content="width=device-width, initial-scale=1.0" name="viewport">
+	<title>AudioTranscribe - 音频转写工具</title>
+	<link rel="icon" type="image/svg+xml" href="./logo.svg" />
+	<style>
+		/*
+		 * Design System: shadcn/ui inspired
+		 * Palette: Slate (Neutral Grays) + Primary (Black/Dark Blue)
+		 */
+		:root {
+			--background: 0 0% 100%;
+			--foreground: 222.2 84% 4.9%;
+			--card: 0 0% 100%;
+			--card-foreground: 222.2 84% 4.9%;
+			--popover: 0 0% 100%;
+			--popover-foreground: 222.2 84% 4.9%;
+			--primary: 222.2 47.4% 11.2%;
+			--primary-foreground: 210 40% 98%;
+			--secondary: 210 40% 96.1%;
+			--secondary-foreground: 222.2 47.4% 11.2%;
+			--muted: 210 40% 96.1%;
+			--muted-foreground: 215.4 16.3% 46.9%;
+			--accent: 210 40% 96.1%;
+			--accent-foreground: 222.2 47.4% 11.2%;
+			--destructive: 0 84.2% 60.2%;
+			--destructive-foreground: 210 40% 98%;
+			--border: 214.3 31.8% 91.4%;
+			--input: 214.3 31.8% 91.4%;
+			--ring: 222.2 84% 4.9%;
+			--radius: 0.5rem;
+			--sidebar-width: 240px;
+		}
+		
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			background-color: hsl(var(--background));
+			color: hsl(var(--foreground));
+			height: 100vh;
+			width: 100vw;
+			overflow: hidden;
+			display: flex;
+			font-size: 14px;
+			line-height: 1.5;
+		}
+		
+		/* --- Sidebar --- */
+		aside {
+			width: var(--sidebar-width);
+			border-right: 1px solid hsl(var(--border));
+			display: flex;
+			flex-direction: column;
+			padding: 1.5rem;
+			background-color: hsl(var(--card));
+			flex-shrink: 0;
+		}
+		
+		.brand {
+			font-size: 1.25rem;
+			font-weight: 700;
+			margin-bottom: 2rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			color: hsl(var(--primary));
+		}
+		
+		nav {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
+		
+		.nav-item {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			border-radius: var(--radius);
+			color: hsl(var(--muted-foreground));
+			text-decoration: none;
+			transition: all 0.2s;
+			cursor: pointer;
+			font-weight: 500;
+		}
+		
+		.nav-item:hover {
+			background-color: hsl(var(--accent));
+			color: hsl(var(--accent-foreground));
+		}
+		
+		.nav-item.active {
+			background-color: hsl(var(--secondary));
+			color: hsl(var(--secondary-foreground));
+		}
+		
+		/* --- Main Content --- */
+		main {
+			flex: 1;
+			position: relative;
+			overflow: hidden;
+			background-color: #f8fafc;
+		}
+		
+		.page {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			padding: 2rem;
+			display: none;
+			flex-direction: column;
+			overflow-y: auto;
+		}
+		
+		.page.active {
+			display: flex;
+			animation: fadeIn 0.3s ease;
+		}
+		
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(5px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+		
+		h1 {
+			font-size: 1.5rem;
+			font-weight: 600;
+			margin-bottom: 1.5rem;
+			color: hsl(var(--foreground));
+		}
+		
+		/* --- Components --- */
+		.card {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+		}
+		
+		.btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			border-radius: var(--radius);
+			font-size: 0.875rem;
+			font-weight: 500;
+			height: 2.5rem;
+			padding: 0 1rem;
+			cursor: pointer;
+			transition: all 0.2s;
+			border: none;
+			outline: none;
+		}
+		
+		.btn-primary {
+			background-color: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+		}
+		
+		.btn-primary:hover {
+			opacity: 0.9;
+		}
+		
+		.btn-primary:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+		
+		.btn-outline {
+			border: 1px solid hsl(var(--border));
+			background: transparent;
+			color: hsl(var(--foreground));
+		}
+		
+		.btn-outline:hover {
+			background-color: hsl(var(--accent));
+		}
+		
+		.input {
+			display: flex;
+			width: 100%;
+			height: 2.5rem;
+			border-radius: var(--radius);
+			border: 1px solid hsl(var(--input));
+			background-color: transparent;
+			padding: 0.5rem 0.75rem;
+			font-size: 0.875rem;
+			transition: all 0.2s;
+			outline: none;
+		}
+		
+		.input:focus {
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+		
+		.label {
+			display: block;
+			font-size: 0.875rem;
+			font-weight: 500;
+			margin-bottom: 0.5rem;
+			color: hsl(var(--foreground));
+		}
+		
+		/* --- Transcribe Page Specifics --- */
+		.upload-zone {
+			border: 2px dashed hsl(var(--border));
+			border-radius: var(--radius);
+			background-color: hsl(var(--card));
+			height: 200px;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 1rem;
+			transition: all 0.2s;
+			cursor: pointer;
+			margin-bottom: 1.5rem;
+		}
+		
+		.upload-zone:hover, .upload-zone.dragover {
+			border-color: hsl(var(--primary));
+			background-color: hsl(var(--accent));
+		}
+		
+		.upload-icon {
+			width: 48px;
+			height: 48px;
+			color: hsl(var(--muted-foreground));
+		}
+		
+		.result-container {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			min-height: 0;
+		}
+		
+		.editor-area {
+			flex: 1;
+			width: 100%;
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 1rem;
+			font-family: inherit;
+			font-size: 1rem;
+			line-height: 1.6;
+			resize: none;
+			outline: none;
+			background: hsl(var(--card));
+		}
+		
+		.editor-area:focus {
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+		
+		.editor-area:disabled {
+			background-color: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+		}
+		
+		.status-bar {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			font-size: 0.875rem;
+			color: hsl(var(--muted-foreground));
+			margin-bottom: 0.5rem;
+		}
+		
+		.config-hint {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			background: hsl(var(--accent));
+			padding: 0.5rem 1rem;
+			border-radius: var(--radius);
+			margin-bottom: 1rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+		
+		.config-hint a {
+			color: hsl(var(--primary));
+			text-decoration: none;
+			font-weight: 500;
+		}
+		
+		.config-hint a:hover {
+			text-decoration: underline;
+		}
+		
+		/* --- Config Page Specifics --- */
+		.config-form {
+			max-width: 500px;
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 1.5rem;
+		}
+		
+		.form-group {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
+		
+		/* SVG Icons */
+		svg {
+			width: 20px;
+			height: 20px;
+		}
+		
+		/* Loading Spinner */
+		.spinner {
+			border: 3px solid hsl(var(--muted));
+			border-top: 3px solid hsl(var(--primary));
+			border-radius: 50%;
+			width: 24px;
+			height: 24px;
+			animation: spin 1s linear infinite;
+			display: none;
+		}
+		
+		@keyframes spin {
+			0% {
+				transform: rotate(0deg);
+			}
+			100% {
+				transform: rotate(360deg);
+			}
+		}
+		
+		/* Toast Notification */
+		.toast {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			background: hsl(var(--foreground));
+			color: hsl(var(--background));
+			padding: 0.75rem 1.5rem;
+			border-radius: var(--radius);
+			font-size: 0.875rem;
+			font-weight: 500;
+			transform: translateY(100px);
+			opacity: 0;
+			transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+			z-index: 100;
+		}
+		
+		.toast.show {
+			transform: translateY(0);
+			opacity: 1;
+		}
+		
+		.toast.error {
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+		}
+	</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside>
+	<div class="brand">
+		<svg fill="none" stroke="currentColor" stroke-linecap="round"
+		     stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24">
+			<path
+				d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+			<path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+			<line x1="12" x2="12" y1="19" y2="23"></line>
+			<line x1="8" x2="16" y1="23" y2="23"></line>
+		</svg>
+		AudioTranscribe
+	</div>
+	<nav>
+		<a id="nav-transcribe" class="nav-item active" href="#/">
+			<svg fill="none" stroke="currentColor" stroke-linecap="round"
+			     stroke-linejoin="round" stroke-width="2"
+			     viewBox="0 0 24 24">
+				<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+				<polyline points="9 22 9 12 15 12 15 22"></polyline>
+			</svg>
+			识别页面
+		</a>
+		<a id="nav-config" class="nav-item" href="#/config">
+			<svg fill="none" stroke="currentColor" stroke-linecap="round"
+			     stroke-linejoin="round" stroke-width="2"
+			     viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="3"></circle>
+				<path
+					d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+			</svg>
+			配置页面
+		</a>
+	</nav>
+</aside>
+
+<!-- Main Content Area -->
+<main>
+	<!-- Page 1: Transcribe -->
+	<section id="page-transcribe" class="page active">
+		<h1>音频转写</h1>
+		
+		<!-- Config Hint -->
+		<div id="config-hint" class="config-hint" style="display: none;">
+			<svg fill="none" stroke="currentColor" stroke-width="2"
+			     viewBox="0 0 24 24">
+				<circle cx="12" cy="12" r="10"></circle>
+				<line x1="12" x2="12" y1="16" y2="12"></line>
+				<line x1="12" x2="12.01" y1="8" y2="8"></line>
+			</svg>
+			<span>请先在 <a href="#/config">配置页面</a> 设置 API 信息</span>
+		</div>
+		
+		<div id="drop-zone" class="upload-zone">
+			<svg class="upload-icon" fill="none" stroke="currentColor"
+			     stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+			     viewBox="0 0 24 24">
+				<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+				<polyline points="17 8 12 3 7 8"></polyline>
+				<line x1="12" x2="12" y1="3" y2="15"></line>
+			</svg>
+			<div style="text-align: center;">
+				<p style="font-weight: 500; margin-bottom: 0.25rem;">
+					点击或拖拽音频文件到此处</p>
+				<p style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">
+					支持 MP3, WAV, M4A, FLAC 格式</p>
+			</div>
+			<input id="file-input" accept="audio/*" style="display: none;"
+			       type="file">
+		</div>
+		
+		<div class="result-container">
+			<div class="status-bar">
+				<span id="file-name">未选择文件</span>
+				<div style="display: flex; align-items: center; gap: 0.5rem;">
+					<span id="status-text">就绪</span>
+					<div id="loading-spinner" class="spinner"></div>
+				</div>
+			</div>
+			<textarea id="transcription-result" class="editor-area"
+			          disabled
+			          placeholder="识别结果将显示在这里... (可直接编辑)"></textarea>
+			<div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+				<button id="btn-clear" class="btn btn-outline">清空</button>
+				<button id="btn-copy" class="btn btn-primary">
+					<svg fill="none" stroke="currentColor" stroke-linecap="round"
+					     stroke-linejoin="round" stroke-width="2"
+					     style="margin-right: 0.5rem;" viewBox="0 0 24 24">
+						<rect height="13" rx="2" ry="2" width="13" x="9"
+						      y="9"></rect>
+						<path
+							d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+					</svg>
+					复制文本
+				</button>
+			</div>
+		</div>
+	</section>
+	
+	<!-- Page 2: Configuration -->
+	<section id="page-config" class="page">
+		<h1>系统配置</h1>
+		<div class="card" style="padding: 2rem;">
+			<form id="config-form" class="config-form">
+				<div class="form-group">
+					<label class="label" for="api-url">API 地址</label>
+					<input id="api-url" class="input" placeholder="https://api.siliconflow.cn/v1/audio/transcriptions"
+					       required
+					       type="text"
+					       value="https://api.siliconflow.cn/v1/audio/transcriptions">
+					<span
+						style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">音频转写接口 (OpenAI)</span>
+				</div>
+				<div class="form-group">
+					<label class="label" for="api-model">模型名称</label>
+					<input id="api-model" class="input" placeholder="TeleAI/TeleSpeechASR"
+					       required
+					       type="text" value="TeleAI/TeleSpeechASR">
+					<span
+						style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">例如: TeleAI/TeleSpeechASR, FunAudioLLM/SenseVoiceSmall</span>
+				</div>
+				<div class="form-group">
+					<label class="label" for="api-key">API Key</label>
+					<input id="api-key" class="input" placeholder="sk-..."
+					       required type="password">
+					<span
+						style="font-size: 0.75rem; color: hsl(var(--muted-foreground));">密钥仅保存在本地浏览器，不会上传到任何服务器</span>
+				</div>
+				<div
+					style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+					<button id="btn-test" class="btn btn-outline" type="button">
+						测试连接
+					</button>
+					<button class="btn btn-primary" type="submit">保存配置
+					</button>
+				</div>
+			</form>
+		</div>
+	</section>
+</main>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast">操作成功</div>
+
+<script>
+	/**
+	 * ========================================
+	 * API Service: SiliconFlow Transcription
+	 * ========================================
+	 */
+	
+	/**
+	 * @typedef {Object} TranscribeConfig
+	 * @property {string} module - 模型名称
+	 * @property {string} apiKey - API密钥
+	 * @property {string} apiUrl - API密钥
+	 */
+	
+	/**
+	 * 本地上传音频并转换为文本
+	 * @param {File} audioFile - 用户选择的音频文件对象
+	 * @param {TranscribeConfig} config - 配置对象
+	 * @returns {Promise<string|null>} 转写结果文本
+	 */
+	async function transcribeAudio( audioFile, config ) {
+		// 创建 FormData 对象，用于在 HTTP 请求中发送文件
+		const formData = new FormData();
+		formData.append( 'file', audioFile );
+		
+		// 定义可用的模型名称
+		formData.append( 'model', config.module );
+		
+		try {
+			// 调用 API 接口
+			const response = await fetch( config.apiUrl, {
+				method: 'POST',
+				headers: {
+					// 必须在 Header 中附带 Authorization 字段，格式为 Bearer [你的密钥]
+					'Authorization': `Bearer ${ config.apiKey }`,
+				},
+				body: formData,
+			} );
+			
+			if ( !response.ok ) {
+				const errorData = await response.json().catch( () => ( {} ) );
+				throw new Error( `API 请求失败 (${ response.status }): ${ errorData.message || response.statusText }` );
+			}
+			
+			// 解析返回的 JSON 数据
+			const result = await response.json();
+			// 返回提取出的文本内容
+			return result.text || result.transcription || null;
+			
+		}
+		catch ( error ) {
+			console.error( '语音转文本失败:', error );
+			throw error; // 重新抛出以便上层处理
+		}
+	}
+	
+	/**
+	 * ========================================
+	 * Utils
+	 * ========================================
+	 */
+	const segmenter = new Intl.Segmenter( 'zh', {
+		granularity: 'sentence',
+		localeMatcher: 'best fit',
+	} );
+	/**
+	 * 语言分割 (按句)
+	 *
+	 * @param {string} content 原始文本
+	 * @returns {string}
+	 */
+	function segment( content ) {
+		return Array.from( segmenter.segment( content ) ).map( item => item.segment ).join( '\n' );
+	}
+	
+	/**
+	 * ========================================
+	 * App State & DOM References
+	 * ========================================
+	 */
+	const state = {
+		config: { apiUrl: '', module: '', apiKey: '' },
+		isProcessing: false,
+		currentFile: null,
+	};
+	
+	const dom = {
+		pages: {
+			transcribe: document.getElementById( 'page-transcribe' ),
+			config: document.getElementById( 'page-config' ),
+		},
+		nav: {
+			transcribe: document.getElementById( 'nav-transcribe' ),
+			config: document.getElementById( 'nav-config' ),
+		},
+		transcribe: {
+			dropZone: document.getElementById( 'drop-zone' ),
+			fileInput: document.getElementById( 'file-input' ),
+			fileName: document.getElementById( 'file-name' ),
+			statusText: document.getElementById( 'status-text' ),
+			spinner: document.getElementById( 'loading-spinner' ),
+			result: document.getElementById( 'transcription-result' ),
+			btnCopy: document.getElementById( 'btn-copy' ),
+			btnClear: document.getElementById( 'btn-clear' ),
+			configHint: document.getElementById( 'config-hint' ),
+		},
+		config: {
+			form: document.getElementById( 'config-form' ),
+			apiUrl: document.getElementById( 'api-url' ),
+			model: document.getElementById( 'api-model' ),
+			apiKey: document.getElementById( 'api-key' ),
+			btnTest: document.getElementById( 'btn-test' ),
+		},
+		toast: document.getElementById( 'toast' ),
+	};
+	
+	/**
+	 * ========================================
+	 * Router Logic (Hash-based SPA)
+	 * ========================================
+	 */
+	function handleRoute() {
+		const hash = window.location.hash || '#/';
+		const isConfig = hash === '#/config';
+		
+		dom.pages.transcribe.classList.toggle( 'active', !isConfig );
+		dom.pages.config.classList.toggle( 'active', isConfig );
+		dom.nav.transcribe.classList.toggle( 'active', !isConfig );
+		dom.nav.config.classList.toggle( 'active', isConfig );
+		
+		// Check config status when entering transcribe page
+		if ( !isConfig ) {
+			checkConfigStatus();
+		}
+	}
+	
+	window.addEventListener( 'hashchange', handleRoute );
+	window.addEventListener( 'DOMContentLoaded', () => {
+		handleRoute();
+		loadConfig();
+		checkConfigStatus();
+	} );
+	
+	/**
+	 * ========================================
+	 * Configuration Management (localStorage)
+	 * ========================================
+	 */
+	function loadConfig() {
+		const saved = localStorage.getItem( 'transcribe_config' );
+		if ( saved ) {
+			try {
+				state.config = JSON.parse( saved );
+				dom.config.apiUrl.value = state.config.apiUrl || 'https://api.siliconflow.cn/v1/audio/transcriptions';
+				dom.config.model.value = state.config.module || 'TeleAI/TeleSpeechASR';
+				dom.config.apiKey.value = state.config.apiKey || '';
+			}
+			catch ( e ) {
+				console.warn( '配置加载失败:', e );
+			}
+		}
+	}
+	
+	function saveConfig() {
+		state.config = {
+			apiUrl: dom.config.apiUrl.value.trim(),
+			module: dom.config.model.value.trim(),
+			apiKey: dom.config.apiKey.value.trim(),
+		};
+		localStorage.setItem( 'transcribe_config', JSON.stringify( state.config ) );
+		checkConfigStatus();
+	}
+	
+	function isConfigValid() {
+		return state.config.apiUrl && state.config.module && state.config.apiKey;
+	}
+	
+	function checkConfigStatus() {
+		if ( !isConfigValid() ) {
+			dom.transcribe.configHint.style.display = 'flex';
+			dom.transcribe.result.disabled = true;
+		}
+		else {
+			dom.transcribe.configHint.style.display = 'none';
+			dom.transcribe.result.disabled = false;
+		}
+	}
+	
+	dom.config.form.addEventListener( 'submit', ( e ) => {
+		e.preventDefault();
+		saveConfig();
+		showToast( '配置已保存', 'success' );
+	} );
+	
+	dom.config.btnTest.addEventListener( 'click', async () => {
+		const testConfig = {
+			apiUrl: dom.config.apiUrl.value.trim(),
+			module: dom.config.model.value.trim(),
+			apiKey: dom.config.apiKey.value.trim(),
+		};
+		
+		if ( !testConfig.apiUrl || !testConfig.module || !testConfig.apiKey ) {
+			showToast( '请填写完整配置信息', 'error' );
+			return;
+		}
+		
+		// Simple connectivity test (HEAD request to API endpoint)
+		try {
+			dom.config.btnTest.disabled = true;
+			dom.config.btnTest.textContent = '测试中...';
+			
+			// Note: CORS may block this, but it's a best-effort check
+			const response = await fetch( testConfig.apiUrl.replace( 'transcriptions', '' ), {
+				method: 'OPTIONS',
+				headers: { 'Authorization': `Bearer ${ testConfig.apiKey }` },
+			} ).catch( () => ( { ok: true } ) ); // Ignore CORS errors for UX
+			
+			showToast( '连接测试完成，请尝试实际转写', 'success' );
+		}
+		catch ( err ) {
+			showToast( '连接测试失败，请检查网络', 'error' );
+		}
+		finally {
+			dom.config.btnTest.disabled = false;
+			dom.config.btnTest.textContent = '测试连接';
+		}
+	} );
+	
+	/**
+	 * ========================================
+	 * File Upload & Transcription Logic
+	 * ========================================
+	 */
+	// Drag & Drop Events
+	[ 'dragenter', 'dragover', 'dragleave', 'drop' ].forEach( eventName => {
+		dom.transcribe.dropZone.addEventListener( eventName, preventDefaults, false );
+	} );
+	
+	function preventDefaults( e ) {
+		e.preventDefault();
+		e.stopPropagation();
+	}
+	
+	[ 'dragenter', 'dragover' ].forEach( eventName => {
+		dom.transcribe.dropZone.addEventListener( eventName, () =>
+			dom.transcribe.dropZone.classList.add( 'dragover' ), false );
+	} );
+	
+	[ 'dragleave', 'drop' ].forEach( eventName => {
+		dom.transcribe.dropZone.addEventListener( eventName, () =>
+			dom.transcribe.dropZone.classList.remove( 'dragover' ), false );
+	} );
+	
+	dom.transcribe.dropZone.addEventListener( 'drop', handleDrop, false );
+	dom.transcribe.dropZone.addEventListener( 'click', () => dom.transcribe.fileInput.click() );
+	dom.transcribe.fileInput.addEventListener( 'change', ( e ) => handleFiles( e.target.files ) );
+	
+	function handleDrop( e ) {
+		const dt = e.dataTransfer;
+		handleFiles( dt.files );
+	}
+	
+	function handleFiles( files ) {
+		if ( files.length === 0 ) {
+			return;
+		}
+		const file = files[0];
+		
+		if ( !file.type.startsWith( 'audio/' ) ) {
+			showToast( '请上传音频文件 (MP3/WAV/M4A/FLAC)', 'error' );
+			return;
+		}
+		
+		if ( !isConfigValid() ) {
+			showToast( '请先配置 API 信息', 'error' );
+			window.location.hash = '#/config';
+			return;
+		}
+		
+		state.currentFile = file;
+		dom.transcribe.fileName.textContent = file.name;
+		startTranscription( file );
+	}
+	
+	async function startTranscription( file ) {
+		if ( state.isProcessing ) {
+			return;
+		}
+		state.isProcessing = true;
+		
+		// UI States
+		dom.transcribe.statusText.textContent = '正在识别...';
+		dom.transcribe.spinner.style.display = 'block';
+		dom.transcribe.result.value = '';
+		dom.transcribe.result.disabled = true;
+		
+		try {
+			const result = await transcribeAudio( file, {
+				module: state.config.module,
+				apiKey: state.config.apiKey,
+				apiUrl: state.config.apiUrl,
+			} );
+			
+			if ( result ) {
+				dom.transcribe.result.value = segment(result);
+				dom.transcribe.statusText.textContent = '识别完成';
+				showToast( '转写成功', 'success' );
+			}
+			else {
+				throw new Error( '返回结果为空' );
+			}
+		}
+		catch ( error ) {
+			console.error( 'Transcription error:', error );
+			dom.transcribe.result.value = `❌ 识别失败: ${ error.message }\n\n请检查:\n1. API Key 是否有效\n2. 模型名称是否正确\n3. 网络连接是否正常\n4. 音频文件格式是否支持`;
+			dom.transcribe.statusText.textContent = '识别失败';
+			showToast( '转写失败: ' + error.message, 'error' );
+		}
+		finally {
+			dom.transcribe.spinner.style.display = 'none';
+			dom.transcribe.result.disabled = false;
+			state.isProcessing = false;
+			dom.transcribe.result.focus();
+		}
+	}
+	
+	/**
+	 * ========================================
+	 * Utility Functions
+	 * ========================================
+	 */
+	function showToast( message, type = 'success' ) {
+		dom.toast.textContent = message;
+		dom.toast.className = `toast ${ type === 'error' ? 'error' : '' } show`;
+		setTimeout( () => dom.toast.classList.remove( 'show' ), 3000 );
+	}
+	
+	dom.transcribe.btnCopy.addEventListener( 'click', () => {
+		if ( !dom.transcribe.result.value ) {
+			showToast( '没有可复制的内容', 'error' );
+			return;
+		}
+		dom.transcribe.result.select();
+		document.execCommand( 'copy' );
+		window.getSelection().removeAllRanges();
+		showToast( '文本已复制到剪贴板' );
+	} );
+	
+	dom.transcribe.btnClear.addEventListener( 'click', () => {
+		dom.transcribe.result.value = '';
+		dom.transcribe.fileName.textContent = '未选择文件';
+		state.currentFile = null;
+		dom.transcribe.fileInput.value = '';
+		showToast( '已清空' );
+	} );
+	
+	// Keyboard shortcut: Ctrl/Cmd + Enter to copy
+	document.addEventListener( 'keydown', ( e ) => {
+		if ( ( e.ctrlKey || e.metaKey ) && e.key === 'Enter' && dom.transcribe.result.value ) {
+			dom.transcribe.btnCopy.click();
+		}
+	} );
+
+</script>
+</body>
+</html>
